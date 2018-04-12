@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# Used as a proxy for remote & long running process due to a kubenetes
+# limitation.  The script will run ARGS in a new process and wait for EOF from
+# stdin. Once detecting an EOF, it will kill the process.  This guarantee that
+# the process will be reliably killed once the kubernetes exec connection is
+# tear down.
+
+$@ &
+pid=$!
+
+read
+kill -SIGTERM $pid

@@ -1,0 +1,7 @@
+#!/bin/bash
+
+pushd $PV_APP_ROOT >/dev/null
+/scripts/log_run npm start
+ret=$?
+popd >/dev/null
+exit $ret

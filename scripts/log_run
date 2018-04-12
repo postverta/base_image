@@ -1,0 +1,12 @@
+#!/bin/bash
+# this is a simpler exec script that timestamps each line from stdout/stderr
+# and send it through our log collector.
+
+$@ 2>&1 | while read line
+do
+    ts=`date +%s.%N`
+    ret=$?
+    echo "$ts,$@,$line" | curl -H "Content-Type: application/octet-stream" -X POST -d @- "$PV_INTERNAL_API_ENDPOINT/internal/app/$PV_APP_ID/log"
+done
+
+exit ${PIPESTATUS[0]}

@@ -1,0 +1,7 @@
+#!/bin/bash
+fullpath=$PV_APP_ROOT/$FILEPATH
+dirname=`dirname $fullpath`
+if [ ! -d $dirname ]; then
+    /bin/mkdir -p $dirname
+fi
+/bin/cat - >"$fullpath"

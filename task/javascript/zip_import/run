@@ -1,0 +1,30 @@
+#!/bin/bash
+set -e
+
+pushd $PV_APP_ROOT >/dev/null
+
+# Unzip doesn't support reading from stdin. First dump the zip to a temp file
+/bin/cat - >/tmp/import.zip
+/usr/bin/unzip -qq /tmp/import.zip -d /tmp/unzipped
+
+if [ $PROJECTROOT == "." ]; then
+    /bin/cp -r /tmp/unzipped/. ./
+else
+    /bin/cp -r /tmp/unzipped/$PROJECTROOT/. ./
+fi
+
+/bin/rm /tmp/import.zip
+/bin/rm -rf /tmp/unzipped
+
+# Clean up the project, and clean up the package.json file
+rm -rf .git package-lock.json .npmrc .env
+rm -rf node_modules
+jq "{dependencies:(.dependencies // {})}" package.json > package.json.new
+mv package.json.new package.json
+
+# Run npm install to initialize dependencies
+# move the cache to elsewhere
+echo "cache=/tmp/.npm" > .npmrc
+npm install --no-progress
+
+popd >/dev/null

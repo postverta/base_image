@@ -1,0 +1,3 @@
+#!/bin/bash
+fullpath=$PV_APP_ROOT/$FILEPATH
+/bin/cat "$fullpath"

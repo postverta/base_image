@@ -1,0 +1,31 @@
+#!/bin/bash
+
+setup_proxy()
+{
+    killall nc
+    alive="false"
+    if [ ! "$1" == "0" ]; then
+        alive="true"
+        nc -k -l -p 8080 </tmp/proxy_fifo | nc localhost $1 >/tmp/proxy_fifo &
+    fi
+    curl -H "Content-Type: application/json" -X POST -d "{\"isalive\": $alive}" "$PV_INTERNAL_API_ENDPOINT/internal/app/$PV_APP_ID/port"
+}
+
+mkfifo /tmp/proxy_fifo
+lastport=0
+while true; do
+    port=$lastport
+    listen=$(ss -lnt | grep -v -E "(:50000|:8080)" | grep -m 1 "LISTEN" | awk '{print $4}')
+    if [ ! -z "$listen" ]; then
+        IFS=":"; read -ra parts <<< "$listen"
+        port=${parts[-1]}
+    else
+        port=0
+    fi
+
+    if [ ! "$lastport" == "$port" ]; then
+        setup_proxy "$port"
+        lastport=$port
+    fi
+    sleep 1
+done

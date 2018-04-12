@@ -1,0 +1,8 @@
+#!/bin/bash
+old_fullpath=$PV_APP_ROOT/$OLD_FILEPATH
+new_fullpath=$PV_APP_ROOT/$NEW_FILEPATH
+new_dirname=`dirname $new_fullpath`
+if [ ! -d $new_dirname ]; then
+    /bin/mkdir -p $new_dirname
+fi
+/bin/cp "$old_fullpath" "$new_fullpath"

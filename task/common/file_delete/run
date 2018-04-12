@@ -1,0 +1,8 @@
+#!/bin/bash
+fullpath=$PV_APP_ROOT/$FILEPATH
+/bin/rm "$fullpath"
+
+dirname=`dirname $fullpath`
+if [ -z "$(/bin/ls -A $dirname)" ]; then
+    /bin/rm -d $dirname
+fi

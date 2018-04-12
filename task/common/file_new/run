@@ -1,0 +1,8 @@
+#!/bin/bash
+fullpath=$PV_APP_ROOT/$FILEPATH
+echo $fullpath
+dirname=`dirname $fullpath`
+if [ ! -d $dirname ]; then
+    /bin/mkdir -p $dirname
+fi
+/usr/bin/touch "$fullpath"

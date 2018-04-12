@@ -1,0 +1,9 @@
+#!/bin/bash
+mkdir -p $PV_APP_ROOT/.pv_run
+if [ ! -f $PV_APP_ROOT/.pv_run/pid ]; then
+    exit 0
+fi
+
+pid=`cat $PV_APP_ROOT/.pv_run/pid`
+kill -SIGTERM $pid
+rm $PV_APP_ROOT/.pv_run/pid

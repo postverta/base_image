@@ -1,0 +1,23 @@
+#!/bin/bash
+set -e
+
+pushd $PV_APP_ROOT >/dev/null
+
+# There is a caveat: we should have only checked out the commit indicated by
+# $GITHUB_COMMIT, not the head, but github's setting doesn't allow us to
+# do a shallow clone at a particular commit. So we ignore $GITHUB_COMMIT for
+# now and always checkout the head. Should be fine as $GITHUB_COMMIT should
+# point to the head almost always.
+/usr/bin/git clone --depth 1 --branch $GITHUB_BRANCH https://github.com/$GITHUB_USER/$GITHUB_REPO ./
+
+# Clean up the project, and clean up the package.json file
+rm -rf .git package-lock.json .npmrc .env
+jq "{dependencies:(.dependencies // {})}" package.json > package.json.new
+mv package.json.new package.json
+
+# Run npm install to initialize dependencies
+# move the cache to elsewhere
+echo "cache=/tmp/.npm" > .npmrc
+npm install --no-progress
+
+popd >/dev/null

@@ -1,0 +1,62 @@
+#!/bin/bash
+# This is the basic update script for javascript. It copies the source files to
+# the build directory, make dependency changes based on package.json, and
+# restart the app
+
+mkdir -p $PV_APP_ROOT/.pv_build
+mkdir -p $PV_APP_ROOT/.pv_run
+files_changed=`/usr/bin/rsync -rpt --delete \
+                --exclude=".pv_config*" \
+                --exclude=".pv_build*" \
+                --exclude=".pv_run*" \
+                --exclude=".git*" \
+                --exclude=".config*" \
+                --exclude=".npmrc" \
+                --exclude="node_modules*" \
+                --info=name --checksum \
+                $PV_APP_ROOT/ $PV_APP_ROOT/.pv_build/`
+
+# note that rsync strips off the parent directories
+package_changed=false
+IFS=$'\n'
+for file in $files_changed; do
+    if [ $file == "package.json" ]; then
+        package_changed=true
+    fi
+done
+
+success=true
+if $package_changed; then
+    pushd $PV_APP_ROOT/.pv_build >/dev/null
+
+    # move cache elsewhere, otherwise it is gonna take too much space
+    echo "cache=/tmp/.npm" > .npmrc
+    /scripts/log_run npm install --no-progress --no-shrinkwrap
+    if [ $? -ne 0 ]; then
+        success=false
+    fi
+
+    popd >/dev/null
+fi
+
+if $success; then
+    # kill any existing process
+    if [ -f $PV_APP_ROOT/.pv_run/pid ]; then
+        pid=`cat $PV_APP_ROOT/.pv_run/pid`
+        kill -SIGTERM $pid
+        rm $PV_APP_ROOT/.pv_run/pid
+    fi
+
+    # run npm start
+    pushd $PV_APP_ROOT/.pv_build>/dev/null
+    npm_start_cmd=`cat package.json | jq .scripts.start -M -r`
+    PATH=$PV_APP_ROOT/.pv_build/node_modules/.bin/:$PATH
+    if [ -f .env ]; then
+        set -a
+        source .env
+        set +a
+    fi
+
+    /scripts/log_run $npm_start_cmd </dev/null >/dev/null 2>&1 &
+    echo $! >$PV_APP_ROOT/.pv_run/pid
+fi

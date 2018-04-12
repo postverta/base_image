@@ -1,0 +1,10 @@
+#!/bin/bash
+mkdir -p $PV_APP_ROOT/.pv_run
+if [ -f $PV_APP_ROOT/.pv_run/pid ]; then
+    # We don't schedule the stop/start events as we need to guarantee
+    # atomicity of the stop/start transaction. So here we directly
+    # execute the two scripts
+    ../app_process_stop/run
+    # TODO: what if stop fails?
+    ../app_process_start/run
+fi

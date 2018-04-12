@@ -1,0 +1,17 @@
+#!/bin/bash
+mkdir -p $PV_APP_ROOT/.pv_run
+if [ -f $PV_APP_ROOT/.pv_run/pid ]; then
+    exit 0
+fi
+
+pushd $PV_APP_ROOT/.pv_build>/dev/null
+npm_start_cmd=`cat package.json | jq .scripts.start -M -r`
+PATH=$PV_APP_ROOT/.pv_build/node_modules/.bin/:$PATH
+if [ -f .env ]; then
+    set -a
+    source .env
+    set +a
+fi
+
+/scripts/log_run $npm_start_cmd &
+echo $! >$PV_APP_ROOT/.pv_run/pid

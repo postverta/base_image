@@ -1,0 +1,129 @@
+#!/usr/bin/env node
+const fs = require("fs");
+const path = require("path");
+const https = require("https");
+const {execSync} = require("child_process");
+
+var pvPath = path.join(process.env.PV_APP_ROOT, ".pv");
+var langserverPath = path.join(pvPath, "langserver");
+
+try {
+    fs.statSync(pvPath);
+} catch (err) {
+    fs.mkdirSync(pvPath);
+}
+
+try {
+    fs.statSync(langserverPath);
+} catch (err) {
+    fs.mkdirSync(langserverPath);
+    fs.symlinkSync(process.env.PV_APP_ROOT, path.join(langserverPath, "app"));
+
+    // Create our own t/jsconfig.json for the language server. The default ones
+    // don't work very well for default imports.
+    var jsconfigJson = {
+        compilerOptions: {
+            module: "commonjs",
+            allowSyntheticDefaultImports: true,
+            allowNonTsExtensions: false,
+            preserveSymlinks: true,
+            allowJs: true
+        },
+        include: ["**/*.js", "**/*.jsx"]
+    };
+    var tsconfigJson = {
+        compilerOptions: {
+            module: "commonjs",
+            allowSyntheticDefaultImports: true,
+            allowNonTsExtensions: false,
+            preserveSymlinks: true,
+            allowJs: false
+        },
+        include: ["**/*.ts", "**/*.tsx"]
+    };
+
+    fs.writeFileSync(path.join(langserverPath, "jsconfig.json"), JSON.stringify(jsconfigJson));
+    fs.writeFileSync(path.join(langserverPath, "tsconfig.json"), JSON.stringify(tsconfigJson));
+}
+
+// Switch working directory to the language server workspace
+process.chdir(langserverPath);
+
+// Move cache to elsewhere
+fs.writeFileSync(".npmrc", "cache=/tmp/.npm");
+
+var pkg = JSON.parse(fs.readFileSync(path.join(process.env.PV_APP_ROOT, "package.json"), "utf8"));
+var langserverPkg;
+if (fs.existsSync(path.join(langserverPath, "package.json"))) {
+    langserverPkg = JSON.parse(fs.readFileSync(path.join(langserverPath, "package.json")));
+} else {
+    langserverPkg = {
+        name: "langserver-workspace",
+        dependencies: {}
+    };
+}
+
+var promises = [];
+for (let dep in pkg.dependencies) {
+    // Doesn't support scoped packages now:
+    // https://github.com/Microsoft/types-publisher/issues/155
+    if (dep.indexOf("@") !== -1) {
+        continue;
+    }
+
+    // Check if the package contains typing by itself
+    var childPackagePath = path.join(process.env.PV_APP_ROOT, "node_modules", dep, "package.json");
+    if (fs.existsSync(childPackagePath)) {
+        var childPackage = JSON.parse(fs.readFileSync(childPackagePath, "utf8"));
+        if (childPackage.types || childPackage.typings) {
+            continue;
+        }
+    }
+
+    // Check if the @types is already installed
+    var typesPackageName = "@types/" + dep;
+    if (langserverPkg.dependencies[typesPackageName] !== undefined) {
+        continue;
+    }
+
+    // Check if the @types package is available
+    var typesPackageUrl = "https://registry.npmjs.org/@types%2F" + dep;
+    var p = new Promise((resolve, reject) => {
+        var packageName = typesPackageName;
+        https.get(typesPackageUrl, (res) => {
+            if (res.statusCode === 200) {
+                resolve(packageName);
+            } else {
+                resolve(null);
+            }
+        });
+    });
+    promises.push(p);
+}
+
+Promise.all(promises).then((values) => {
+    for (let pkgName of values) {
+        if (pkgName === null) {
+            continue;
+        }
+
+        langserverPkg.dependencies[pkgName] = "*";
+    }
+
+    // Remove packages that are no longer in use
+    for (let dep in langserverPkg.dependencies) {
+        var realDep = dep;
+        if (realDep.startsWith("@types/")) {
+            realDep = realDep.substring(7);
+        }
+        if (pkg.dependencies[realDep] === undefined) {
+            delete langserverPkg.dependencies[dep];
+        }
+    }
+
+    // Add the special packages that we always need
+    langserverPkg.dependencies["@types/node"] = "*";
+
+    fs.writeFileSync(path.join(langserverPath, "package.json"), JSON.stringify(langserverPkg));
+    execSync("npm install --no-shrinkwrap");
+});

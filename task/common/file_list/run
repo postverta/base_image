@@ -1,0 +1,9 @@
+#!/bin/bash
+/usr/bin/find $PV_APP_ROOT -path $PV_APP_ROOT/.pv -prune -o \
+                           -path $PV_APP_ROOT/.git -prune -o \
+                           -path $PV_APP_ROOT/node_modules -prune -o \
+                           -path $PV_APP_ROOT/.config -prune -o \
+                           -path $PV_APP_ROOT/.npmrc -prune -o \
+                           -path $PV_APP_ROOT/package.json -prune -o \
+                           -path $PV_APP_ROOT/package-lock.json -prune -o \
+                           -type f -printf '%P\n'

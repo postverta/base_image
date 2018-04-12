@@ -1,0 +1,10 @@
+#!/bin/bash
+# This is a wrapper to fork the app. We take this path because we need locking
+# as forking cannot happen while we are writing to the disk. However, currently
+# only pv_exec implements the locking. In the future, we might move locking to
+# pv_backend.
+
+sync $PV_APP_ROOT
+/sbin/fsfreeze -f $PV_APP_ROOT
+curl -H "Content-Type: application/json" -X POST -d "{\"user_id\": \"$USER_ID\"}" "$PV_INTERNAL_API_ENDPOINT/internal/app/$PV_APP_ID/fork"
+/sbin/fsfreeze -u $PV_APP_ROOT

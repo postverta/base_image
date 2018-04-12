@@ -1,0 +1,16 @@
+#!/bin/bash
+
+pushd $PV_APP_ROOT >/dev/null
+
+# move the cache to elsewhere
+echo "cache=/tmp/.npm" > .npmrc
+if [ -z "$VERSION" ]; then
+    npm install --no-progress $NAME
+    ret=$?
+else
+    npm install --no-progress $NAME@$VERSION
+    ret=$?
+fi
+
+popd >/dev/null
+exit $ret

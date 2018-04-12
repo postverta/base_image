@@ -1,0 +1,11 @@
+#!/bin/bash
+
+pushd $PV_APP_ROOT >/dev/null
+
+# move the cache to elsewhere
+echo "cache=/tmp/.npm" > .npmrc
+npm remove --no-progress $NAME
+ret=$?
+
+popd >/dev/null
+exit $ret
